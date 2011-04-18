@@ -696,22 +696,30 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	ap_log_rerror(APLOG_MARK, APLOG_INFO|APLOG_NOERRNO, 0, r, ERRTAG "cookie not found! not authorized! RemoteIP:%s", szRemoteIP);
     }
 
-   /* unset headers sent by the client that are supposed to be set by us */
-   if (conf->szAuth_memCookie_AuthentificationHeader)
-       apr_table_unset(r->headers_in, conf->szAuth_memCookie_AuthentificationHeader);
-   if (conf->szAuth_memCookie_SessionHeaders) {
+    /* unset headers sent by the client that are supposed to be set by us */
+    if (conf->szAuth_memCookie_AuthentificationHeader)
+	apr_table_unset(r->headers_in, conf->szAuth_memCookie_AuthentificationHeader);
+    if (conf->szAuth_memCookie_SessionHeaders) {
 	char *headers = apr_pstrdup(r->pool, conf->szAuth_memCookie_SessionHeaders);
 	char *key, *keypos = 0;
 	for(key = strtok_r(headers, ", ", &keypos); key; key = strtok_r(NULL, ", ", &keypos))
 	    apr_table_unset(r->headers_in, key);
-   }
+    }
 
-   /* check for a login/logout command */
-   if (conf->szAuth_memCookie_CommandHeader)
+    /* check for a login/logout command */
+    if (conf->szAuth_memCookie_CommandHeader) {
 	command = apr_table_get(r->headers_in, conf->szAuth_memCookie_CommandHeader);
+	if (command && !strcasecmp(conf->szAuth_memCookie_CommandHeader, "Authorization")) {
+	    /* deduce command from authorization header */
+	    if (!*command)
+		command = "logout";
+	    else
+		command = "login";
+	}
+    }
 
    /* check if this is a logout request */
-   if (szCookieValue && command && !strcasecmp(command, "logout")) {
+    if (szCookieValue && command && !strcasecmp(command, "logout")) {
 	char *set_cookie;
 	ap_log_rerror(APLOG_MARK, APLOG_INFO|APLOG_NOERRNO, 0, r, ERRTAG "deleting session %s", szCookieValue);
 
@@ -725,15 +733,15 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	/* delete session from memcache */
 	Auth_memCookie_delete_session(r, conf, szCookieValue);
 	return HTTP_UNAUTHORIZED;
-   }
+    }
 
-   /* we're ok if we have no session and anonymous access is allowed */
-   /* (we ignore this if a "login" command is done to enforce a session) */
-   if (!pAuthSession && conf->nAuth_memCookie_AllowAnonymous && !(command && !strcasecmp(command, "login")))
+    /* we're ok if we have no session and anonymous access is allowed */
+    /* (we ignore this if a "login" command is done to enforce a session) */
+    if (!pAuthSession && conf->nAuth_memCookie_AllowAnonymous && !(command && !strcasecmp(command, "login")))
 	return OK;
 
-   /* if we have no session but a subrequest creation uri is configured, do the subrequest */
-   if (!pAuthSession && conf->szAuth_memCookie_AuthentificationURI && *conf->szAuth_memCookie_AuthentificationURI) {
+    /* if we have no session but a subrequest creation uri is configured, do the subrequest */
+    if (!pAuthSession && conf->szAuth_memCookie_AuthentificationURI && *conf->szAuth_memCookie_AuthentificationURI) {
 	char *set_cookie;
 
 	pAuthSession = Auth_memCookie_session_from_subrequest(r, conf, conf->szAuth_memCookie_AuthentificationURI);
@@ -752,10 +760,10 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	/* store new session into memcache */
 	ap_log_rerror(APLOG_MARK,APLOG_INFO|APLOG_NOERRNO, 0,r,ERRTAG  "creating new session in memcache");
 	Auth_memCookie_set_session(r, conf, szCookieValue, pAuthSession);
-   }
+    }
 
-   /* still no session? goodbye */
-   if (!pAuthSession)
+    /* still no session? goodbye */
+    if (!pAuthSession)
 	return HTTP_UNAUTHORIZED;
 
     /* push session returned structure in request pool so we can access it in Auth_memCookie_check_auth() */
