@@ -752,7 +752,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	szCookieValue = create_new_cookie(r, r->user);
 
 	/* add set-cookie directive to headers */
-	set_cookie = apr_psprintf(r->pool, "%s=%s; path=/; Max-Age: 86400; Secure; HttpOnly", conf->szAuth_memCookie_CookieName, szCookieValue);
+	set_cookie = apr_psprintf(r->pool, "%s=%s; path=/; Max-Age=86400; Secure; HttpOnly", conf->szAuth_memCookie_CookieName, szCookieValue);
 	if (conf->szAuth_memCookie_CookieDomain && *conf->szAuth_memCookie_CookieDomain)
 	    set_cookie = apr_psprintf(r->pool, "%s; domain=%s", set_cookie, conf->szAuth_memCookie_CookieDomain);
 	apr_table_add(r->headers_out, "Set-Cookie", set_cookie);
