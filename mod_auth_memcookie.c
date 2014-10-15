@@ -94,6 +94,7 @@ typedef struct {
     int 	nAuth_memCookie_MatchIP_Mode;
 
     int 	nAuth_memCookie_authbasicfix;
+    apr_array_header_t *requireelems;
 
     char *	szAuth_memCookie_AuthentificationURI;
     char *	szAuth_memCookie_AuthentificationHeader;
@@ -658,7 +659,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
     else if (conf->nAuth_memCookie_MatchIP_Mode == 1 && apr_table_get(r->headers_in, "X-Forwarded-For") != NULL)
 	szRemoteIP = apr_pstrdup(r->pool, apr_table_get(r->headers_in, "X-Forwarded-For"));
     else
-	szRemoteIP = apr_pstrdup(r->pool, r->connection->remote_ip);
+	szRemoteIP = apr_pstrdup(r->pool, r->useragent_ip);
 
     if (!conf->nAuth_memCookie_Authoritative)
 	return DECLINED;
@@ -849,8 +850,8 @@ static int Auth_memCookie_check_auth(request_rec *r)
     }
 
     /* get require line */
-    reqs_arr = ap_requires(r);
-    reqs = reqs_arr ? (require_line *) reqs_arr->elts : NULL;
+    reqs_arr = conf->requireelems;
+    reqs = reqs_arr ?  (require_line *) reqs_arr->elts: NULL;
 
     /* decline if no require line found */
     if (!reqs_arr)
@@ -858,10 +859,10 @@ static int Auth_memCookie_check_auth(request_rec *r)
 
     /* walk throug the array to check eatch require command */
     for (x = 0; x < reqs_arr->nelts; x++) {
-
-	if (!(reqs[x].method_mask & (AP_METHOD_BIT << m)))
-	    continue;
-
+/*
+ *	if (!(reqs[x].method_mask & (AP_METHOD_BIT << m)))
+ *	    continue;
+ */
 	/* get require line */
 	szRequireLine = reqs[x].requirement;
 	ap_log_rerror(APLOG_MARK,APLOG_DEBUG|APLOG_NOERRNO, 0,r,ERRTAG  "Require Line is '%s'", szRequireLine);
@@ -941,6 +942,7 @@ static void *create_Auth_memCookie_dir_config(apr_pool_t *p, char *d)
     conf->nAuth_memCookie_SetSessionHTTPHeader = 0; /* set session information in http header of authenticated user */
     conf->nAuth_memCookie_SetSessionHTTPHeaderEncode = 1; /* encode http header groups value by default */
     conf->nAuth_memCookie_SessionTableSize=10; /* Max number of element in session information table, 10 by default */
+    conf->requireelems=apr_array_make(p,20,sizeof(require_line));
 
     conf->szAuth_memCookie_AuthentificationURI = 0;
     conf->szAuth_memCookie_AuthentificationHeader = 0;
@@ -964,6 +966,13 @@ static const char *cmd_MatchIP_Mode(cmd_parms *cmd, void *InDirConf, const char 
 	conf->nAuth_memCookie_MatchIP_Mode = 0;
     }
     return NULL;
+}
+
+static const char* add_require_tag(cmd_parms *cmd, void *InDirConf, const char *p1) {
+    strAuth_memCookie_config_rec *conf=(strAuth_memCookie_config_rec*)InDirConf;
+    require_line *rt = apr_array_push(conf->requireelems);
+    rt->requirement = (char*) p1;
+    return NULL;       
 }
 
 /* apache config fonction of the module */
@@ -1002,6 +1011,10 @@ static const command_rec Auth_memCookie_cmds[] =
     AP_INIT_FLAG ("Auth_memCookie_SilmulateAuthBasic", ap_set_flag_slot,
      (void *)APR_OFFSETOF(strAuth_memCookie_config_rec, nAuth_memCookie_authbasicfix),
      OR_AUTHCFG, "Set to 'no' to fix http header and auth_type for simulating auth basic for scripting language like php auth framework work, set to 'yes' by default"),
+
+    AP_INIT_RAW_ARGS("Require", add_require_tag, NULL, OR_AUTHCFG,
+                    "specifies require directive"
+                    "which one must pass (or not) for a request to suceeed"), 
 
     AP_INIT_TAKE1("Auth_memCookie_AuthentificationURI", ap_set_string_slot,
      (void *)APR_OFFSETOF(strAuth_memCookie_config_rec, szAuth_memCookie_AuthentificationURI),
