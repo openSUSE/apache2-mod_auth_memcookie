@@ -738,8 +738,10 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 
     /* we're ok if we have no session and anonymous access is allowed */
     /* (we ignore this if a "login" command is done to enforce a session) */
-    if (!pAuthSession && conf->nAuth_memCookie_AllowAnonymous && !(command && !strcasecmp(command, "login")))
+    if (!pAuthSession && conf->nAuth_memCookie_AllowAnonymous && !(command && !strcasecmp(command, "login"))) {
+	r->user = apr_pstrdup(r->pool, "");
 	return OK;
+    }
 
     /* if we have no session but a subrequest creation uri is configured, do the subrequest */
     if (!pAuthSession && conf->szAuth_memCookie_AuthentificationURI && *conf->szAuth_memCookie_AuthentificationURI) {
