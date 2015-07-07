@@ -470,24 +470,18 @@ static char *create_new_cookie(request_rec *r, char *username)
 /* check if szGroup are in szGroups. */
 static int get_Auth_memCookie_grp(request_rec *r, const char *szGroup, const char *szGroups)
 {
-    char *szGrp_End;
-    char *szGrp_Pos;
     char *szMyGroups;
+    char *szMyGroup;
 
-    /* make a copy */
-    szMyGroups = apr_pstrdup(r->pool, szGroups);
-    /* search group in groups */
-    if ((szGrp_Pos = strstr(szMyGroups, szGroup)) == 0) {
-	return DECLINED;
-    }
-    /* search the next ':' and set '\0' in place of ':' */
-    if ((szGrp_End = strchr(szGrp_Pos,':')))
-	szGrp_End[0] = '\0';
+    /* Add delimiters at start and end of groups string */
+    /* and search group with delimiters */
+    szMyGroups=apr_pstrcat(r->pool,":",szGroups,":",0);
+    szMyGroup=apr_pstrcat(r->pool,":",szGroup,":",0);
 
-    /* compar szGroup with szGrp_Pos if ok return ok */
-    if(strcmp(szGroup, szGrp_Pos))
+    if (!strstr(szMyGroups,szMyGroup))
 	return DECLINED;
-    ap_log_rerror(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, r, ERRTAG "group found=%s",szGrp_Pos);
+
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, r, ERRTAG "group found=%s", szGroup);
     return OK;
 }
 
