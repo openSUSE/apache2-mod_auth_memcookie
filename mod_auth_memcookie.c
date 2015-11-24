@@ -692,6 +692,32 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	ap_log_rerror(APLOG_MARK, APLOG_INFO|APLOG_NOERRNO, 0, r, ERRTAG "cookie not found! not authorized! RemoteIP:%s", szRemoteIP);
     }
 
+    /* sanitize header */
+    for (;;) {
+	int havedeleted = 0;
+	const apr_array_header_t *hdrs_arr = apr_table_elts(r->headers_in);
+	int i;
+
+	for (i = 0; i < hdrs_arr->nelts; i++) {
+	    const char *key;
+	    const apr_table_entry_t *elts = (const apr_table_entry_t *)hdrs_arr->elts;
+	    for (key = elts[i].key; *key; key++) {
+		if (*key != '-' &&
+			!(*key >= '0' && *key <= '9') &&
+			!(*key >= 'a' && *key <= 'z') &&
+			!(*key >= 'A' && *key <= 'Z')) {
+		    /* illegal character in key, discard */
+		    apr_table_unset(r->headers_in, elts[i].key);
+		    havedeleted = 1;
+		    break;
+		}
+	    }
+	}
+
+	if (!havedeleted)
+	    break;
+    }
+
     /* unset headers sent by the client that are supposed to be set by us */
     if (conf->szAuth_memCookie_AuthentificationHeader)
 	apr_table_unset(r->headers_in, conf->szAuth_memCookie_AuthentificationHeader);
