@@ -95,7 +95,7 @@ typedef struct {
     int 	nAuth_memCookie_MatchIP_Mode;
 
     int 	nAuth_memCookie_authbasicfix;
-#if APVERSION >= 202
+#if APVERSION >= 204
     apr_array_header_t *requireelems;
 #endif
     char *	szAuth_memCookie_AuthentificationURI;
@@ -656,7 +656,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
     else if (conf->nAuth_memCookie_MatchIP_Mode == 1 && apr_table_get(r->headers_in, "X-Forwarded-For") != NULL)
 	szRemoteIP = apr_pstrdup(r->pool, apr_table_get(r->headers_in, "X-Forwarded-For"));
     else
-#if APVERSION >= 202
+#if APVERSION >= 204
 	szRemoteIP = apr_pstrdup(r->pool, r->useragent_ip);
 #else
 	szRemoteIP = apr_pstrdup(r->pool, r->connection->remote_ip);
@@ -846,7 +846,9 @@ static int Auth_memCookie_check_auth(request_rec *r)
     strAuth_memCookie_config_rec *conf=NULL;
     char *szMyUser=r->user;
     char *szUser;
-    int m = r->method_number;
+/*
+ *  int m = r->method_number;
+ */
 
     const apr_array_header_t *reqs_arr=NULL;
     require_line *reqs=NULL;
@@ -879,7 +881,7 @@ static int Auth_memCookie_check_auth(request_rec *r)
     }
 
     /* get require line */
-#if APVERSION >= 202
+#if APVERSION >= 204
     reqs_arr = conf->requireelems;
 #else
     reqs_arr = ap_requires(r);
@@ -975,7 +977,7 @@ static void *create_Auth_memCookie_dir_config(apr_pool_t *p, char *d)
     conf->nAuth_memCookie_SetSessionHTTPHeader = 0; /* set session information in http header of authenticated user */
     conf->nAuth_memCookie_SetSessionHTTPHeaderEncode = 1; /* encode http header groups value by default */
     conf->nAuth_memCookie_SessionTableSize=10; /* Max number of element in session information table, 10 by default */
-#if APVERSION >= 202
+#if APVERSION >= 204
     conf->requireelems=apr_array_make(p,20,sizeof(require_line));
 #endif
 
@@ -1003,7 +1005,7 @@ static const char *cmd_MatchIP_Mode(cmd_parms *cmd, void *InDirConf, const char 
     return NULL;
 }
 
-#if APVERSION >= 202
+#if APVERSION >= 204
 static const char* add_require_tag(cmd_parms *cmd, void *InDirConf, const char *p1) {
     strAuth_memCookie_config_rec *conf=(strAuth_memCookie_config_rec*)InDirConf;
     require_line *rt = apr_array_push(conf->requireelems);
@@ -1049,7 +1051,7 @@ static const command_rec Auth_memCookie_cmds[] =
      (void *)APR_OFFSETOF(strAuth_memCookie_config_rec, nAuth_memCookie_authbasicfix),
      OR_AUTHCFG, "Set to 'no' to fix http header and auth_type for simulating auth basic for scripting language like php auth framework work, set to 'yes' by default"),
 
-#if APVERSION >= 202
+#if APVERSION >= 204
     AP_INIT_RAW_ARGS("Require", add_require_tag, NULL, OR_AUTHCFG,
                     "specifies require directive"
                     "which one must pass (or not) for a request to suceeed"), 
