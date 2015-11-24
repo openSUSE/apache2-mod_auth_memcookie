@@ -68,6 +68,7 @@
 #include "memcached.h"
 
 
+#define APVERSION (AP_SERVER_MAJORVERSION_NUMBER * 100 + AP_SERVER_MINORVERSION_NUMBER)
 
 #define ERRTAG "Auth_memCookie: "
 #define VERSION "1.1.0"
@@ -94,8 +95,9 @@ typedef struct {
     int 	nAuth_memCookie_MatchIP_Mode;
 
     int 	nAuth_memCookie_authbasicfix;
+#if APVERSION >= 202
     apr_array_header_t *requireelems;
-
+#endif
     char *	szAuth_memCookie_AuthentificationURI;
     char *	szAuth_memCookie_AuthentificationHeader;
     char *	szAuth_memCookie_SessionHeaders;
@@ -654,7 +656,11 @@ static int Auth_memCookie_check_cookie(request_rec *r)
     else if (conf->nAuth_memCookie_MatchIP_Mode == 1 && apr_table_get(r->headers_in, "X-Forwarded-For") != NULL)
 	szRemoteIP = apr_pstrdup(r->pool, apr_table_get(r->headers_in, "X-Forwarded-For"));
     else
+#if APVERSION >= 202
 	szRemoteIP = apr_pstrdup(r->pool, r->useragent_ip);
+#else
+	szRemoteIP = apr_pstrdup(r->pool, r->connection->remote_ip);
+#endif
 
     if (!conf->nAuth_memCookie_Authoritative)
 	return DECLINED;
@@ -873,7 +879,11 @@ static int Auth_memCookie_check_auth(request_rec *r)
     }
 
     /* get require line */
+#if APVERSION >= 202
     reqs_arr = conf->requireelems;
+#else
+    reqs_arr = ap_requires(r);
+#endif
     reqs = reqs_arr ?  (require_line *) reqs_arr->elts: NULL;
 
     /* decline if no require line found */
@@ -965,7 +975,9 @@ static void *create_Auth_memCookie_dir_config(apr_pool_t *p, char *d)
     conf->nAuth_memCookie_SetSessionHTTPHeader = 0; /* set session information in http header of authenticated user */
     conf->nAuth_memCookie_SetSessionHTTPHeaderEncode = 1; /* encode http header groups value by default */
     conf->nAuth_memCookie_SessionTableSize=10; /* Max number of element in session information table, 10 by default */
+#if APVERSION >= 202
     conf->requireelems=apr_array_make(p,20,sizeof(require_line));
+#endif
 
     conf->szAuth_memCookie_AuthentificationURI = 0;
     conf->szAuth_memCookie_AuthentificationHeader = 0;
@@ -991,12 +1003,14 @@ static const char *cmd_MatchIP_Mode(cmd_parms *cmd, void *InDirConf, const char 
     return NULL;
 }
 
+#if APVERSION >= 202
 static const char* add_require_tag(cmd_parms *cmd, void *InDirConf, const char *p1) {
     strAuth_memCookie_config_rec *conf=(strAuth_memCookie_config_rec*)InDirConf;
     require_line *rt = apr_array_push(conf->requireelems);
     rt->requirement = (char*) p1;
     return NULL;       
 }
+#endif
 
 /* apache config fonction of the module */
 static const command_rec Auth_memCookie_cmds[] =
@@ -1035,9 +1049,11 @@ static const command_rec Auth_memCookie_cmds[] =
      (void *)APR_OFFSETOF(strAuth_memCookie_config_rec, nAuth_memCookie_authbasicfix),
      OR_AUTHCFG, "Set to 'no' to fix http header and auth_type for simulating auth basic for scripting language like php auth framework work, set to 'yes' by default"),
 
+#if APVERSION >= 202
     AP_INIT_RAW_ARGS("Require", add_require_tag, NULL, OR_AUTHCFG,
                     "specifies require directive"
                     "which one must pass (or not) for a request to suceeed"), 
+#endif
 
     AP_INIT_TAKE1("Auth_memCookie_AuthentificationURI", ap_set_string_slot,
      (void *)APR_OFFSETOF(strAuth_memCookie_config_rec, szAuth_memCookie_AuthentificationURI),
