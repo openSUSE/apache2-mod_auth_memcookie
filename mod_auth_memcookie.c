@@ -475,8 +475,8 @@ static int get_Auth_memCookie_grp(request_rec *r, const char *szGroup, const cha
 
     /* Add delimiters at start and end of groups string */
     /* and search group with delimiters */
-    szMyGroups=apr_pstrcat(r->pool,":",szGroups,":",0);
-    szMyGroup=apr_pstrcat(r->pool,":",szGroup,":",0);
+    szMyGroups=apr_pstrcat(r->pool,":",szGroups,":",(char *)0);
+    szMyGroup=apr_pstrcat(r->pool,":",szGroup,":",(char *)0);
 
     if (!strstr(szMyGroups,szMyGroup))
 	return DECLINED;
