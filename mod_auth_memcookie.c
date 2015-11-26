@@ -704,7 +704,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	const apr_array_header_t *hdrs_arr = apr_table_elts(r->headers_in);
 	int i;
 
-	for (i = 0; i < hdrs_arr->nelts; i++) {
+	for (i = 0; i < hdrs_arr->nelts && !havedeleted; i++) {
 	    const char *key;
 	    const apr_table_entry_t *elts = (const apr_table_entry_t *)hdrs_arr->elts;
 	    for (key = elts[i].key; *key; key++) {
@@ -713,6 +713,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 			!(*key >= 'a' && *key <= 'z') &&
 			!(*key >= 'A' && *key <= 'Z')) {
 		    /* illegal character in key, discard */
+		    ap_log_rerror(APLOG_MARK, APLOG_INFO|APLOG_NOERRNO, 0, r, ERRTAG "deleting illegal header %s", elts[i].key);
 		    apr_table_unset(r->headers_in, elts[i].key);
 		    havedeleted = 1;
 		    break;
