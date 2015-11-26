@@ -704,7 +704,7 @@ static int Auth_memCookie_check_cookie(request_rec *r)
 	const apr_array_header_t *hdrs_arr = apr_table_elts(r->headers_in);
 	int i;
 
-	for (i = 0; i < hdrs_arr->nelts && !havedeleted; i++) {
+	for (i = 0; !havedeleted && i < hdrs_arr->nelts; i++) {
 	    const char *key;
 	    const apr_table_entry_t *elts = (const apr_table_entry_t *)hdrs_arr->elts;
 	    for (key = elts[i].key; *key; key++) {
