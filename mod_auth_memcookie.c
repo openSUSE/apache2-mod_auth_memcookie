@@ -533,6 +533,13 @@ static int Auth_memCookie_DoSetHeader(void *rec, const char *szKey, const char *
     return 1;
 }
 
+static int Auth_memCookie_copy_authhdr(void *v, const char *key, const char *val)
+{
+    request_rec *r = v;
+    apr_table_add(r->headers_out, key, val);
+    apr_table_add(r->err_headers_out, key, val);
+}
+
 /* create a session by doing a subrequest to URI uri, the returned headers define the session */
 static apr_table_t *Auth_memCookie_session_from_subrequest(request_rec *r, strAuth_memCookie_config_rec *conf, char *uri)
 {
@@ -559,13 +566,17 @@ static apr_table_t *Auth_memCookie_session_from_subrequest(request_rec *r, strAu
     }
 
     if (rr->status != HTTP_OK) {
-	const char *www_auth = apr_table_get(rr->err_headers_out, "WWW-Authenticate");
+	const char *key = "WWW-Authenticate";
+	const apr_table_t *hdrs = rr->err_headers_out;
+	const char *www_auth = apr_table_get(hdrs, key);
 	if (!www_auth) {
-	    www_auth = apr_table_get(rr->headers_out, "WWW-Authenticate");
+	    hdrs = rr->headers_out;
+	    www_auth = apr_table_get(hdrs, key);
 	}
 	if (www_auth) {
-	    apr_table_set(r->headers_out, "WWW-Authenticate", www_auth);
-	    apr_table_set(r->err_headers_out, "WWW-Authenticate", www_auth);
+	    apr_table_unset(r->headers_out, key);
+	    apr_table_unset(r->err_headers_out, key);
+	    apr_table_do(Auth_memCookie_copy_authhdr, r, hdrs, key, NULL);
 	}
 	ap_destroy_sub_req(rr);
 	return 0;
