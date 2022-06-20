@@ -538,6 +538,7 @@ static int Auth_memCookie_copy_authhdr(void *v, const char *key, const char *val
     request_rec *r = v;
     apr_table_add(r->headers_out, key, val);
     apr_table_add(r->err_headers_out, key, val);
+    return 1;
 }
 
 /* create a session by doing a subrequest to URI uri, the returned headers define the session */
